@@ -4,15 +4,15 @@ use std::ffi::CString;
 use std::ops;
 use std::ptr;
 
-pub struct GLFW;
+pub struct Instance;
 
-pub fn new() -> GLFW {
-    let result = unsafe { bindings::glfwInit() };
-    debug_assert_eq!(result, bindings::GLFW_TRUE as i32);
-    GLFW
-}
+impl Instance {
+    pub fn new() -> Self {
+        let result = unsafe { bindings::glfwInit() };
+        debug_assert_eq!(result, bindings::GLFW_TRUE as i32);
+        Self
+    }
 
-impl GLFW {
     pub fn new_window(&self, width: i32, height: i32, title: &str, hints: &[WindowHint]) -> Window {
         unsafe {
             bindings::glfwDefaultWindowHints();
@@ -58,7 +58,7 @@ impl GLFW {
     }
 }
 
-impl ops::Drop for GLFW {
+impl ops::Drop for Instance {
     fn drop(&mut self) {
         unsafe {
             bindings::glfwTerminate();
@@ -79,7 +79,7 @@ pub enum WindowHint {
 
 pub struct Window<'glfw> {
     ptr: *mut bindings::GLFWwindow,
-    pd: std::marker::PhantomData<&'glfw GLFW>,
+    pd: std::marker::PhantomData<&'glfw Instance>,
 }
 
 impl Window<'_> {
