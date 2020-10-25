@@ -12,11 +12,14 @@ fn main() {
         .whitelist_function("glfwCreateWindow")
         .whitelist_function("glfwDefaultWindowHints")
         .whitelist_function("glfwDestroyWindow")
+        .whitelist_function("glfwGetRequiredInstanceExtensions")
         .whitelist_function("glfwInit")
         .whitelist_function("glfwPollEvents")
         .whitelist_function("glfwTerminate")
         .whitelist_function("glfwWindowHint")
         .whitelist_function("glfwWindowShouldClose")
+        .whitelist_function("vk(Create|Destroy)Instance")
+        .prepend_enum_name(false)
         .generate()
         .expect("Unable to generate bindings");
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
