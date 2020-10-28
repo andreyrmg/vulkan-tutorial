@@ -1,6 +1,6 @@
 use crate::bindings;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::mem::{zeroed, MaybeUninit};
 use std::ops;
 use std::ptr;
@@ -42,6 +42,30 @@ impl Instance {
         let glfw_extensions = unsafe {
             bindings::glfwGetRequiredInstanceExtensions(glfw_extension_count.as_mut_ptr())
         };
+
+        let extensions: Vec<bindings::VkExtensionProperties> = unsafe {
+            let mut count = MaybeUninit::uninit();
+            bindings::vkEnumerateInstanceExtensionProperties(
+                ptr::null(),
+                count.as_mut_ptr(),
+                ptr::null_mut(),
+            );
+            let mut buffer = Vec::with_capacity(count.assume_init() as usize);
+            bindings::vkEnumerateInstanceExtensionProperties(
+                ptr::null(),
+                count.as_mut_ptr(),
+                buffer.as_mut_ptr(),
+            );
+            buffer.set_len(count.assume_init() as usize);
+            buffer
+        };
+        println!("available extensions:");
+        for extension in extensions {
+            println!(
+                "\t{}",
+                unsafe { CStr::from_ptr(extension.extensionName.as_ptr()) }.to_string_lossy()
+            );
+        }
 
         let mut create_info: bindings::VkInstanceCreateInfo = unsafe { zeroed() };
         create_info.sType = bindings::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

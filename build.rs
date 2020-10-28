@@ -19,6 +19,7 @@ fn main() {
         .whitelist_function("glfwWindowHint")
         .whitelist_function("glfwWindowShouldClose")
         .whitelist_function("vk(Create|Destroy)Instance")
+        .whitelist_function("vkEnumerateInstanceExtensionProperties")
         .prepend_enum_name(false)
         .generate()
         .expect("Unable to generate bindings");
