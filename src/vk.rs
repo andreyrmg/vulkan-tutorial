@@ -1,6 +1,6 @@
 use crate::bindings;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::mem::{zeroed, MaybeUninit};
 use std::ops;
 use std::ptr;
@@ -38,15 +38,20 @@ impl Instance {
         app_info.engineVersion = vk_make_version!(1, 0, 0);
         app_info.apiVersion = vk_make_version!(1, 0, 0);
 
-        let mut glfw_extension_count = MaybeUninit::uninit();
-        let glfw_extensions = unsafe {
-            bindings::glfwGetRequiredInstanceExtensions(glfw_extension_count.as_mut_ptr())
+        let (glfw_extensions, glfw_extension_count) = unsafe {
+            let mut glfw_extension_count = MaybeUninit::uninit();
+            (
+                bindings::glfwGetRequiredInstanceExtensions(glfw_extension_count.as_mut_ptr()),
+                glfw_extension_count.assume_init(),
+            )
         };
+
+        check_all_extensions_included_in_supported_list(glfw_extensions, glfw_extension_count);
 
         let mut create_info: bindings::VkInstanceCreateInfo = unsafe { zeroed() };
         create_info.sType = bindings::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         create_info.pApplicationInfo = &app_info;
-        create_info.enabledExtensionCount = unsafe { glfw_extension_count.assume_init() };
+        create_info.enabledExtensionCount = glfw_extension_count;
         create_info.ppEnabledExtensionNames = glfw_extensions;
 
         let mut instance = MaybeUninit::uninit();
@@ -60,5 +65,50 @@ impl Instance {
         Self {
             inner: unsafe { instance.assume_init() },
         }
+    }
+}
+
+fn check_all_extensions_included_in_supported_list(
+    glfw_extensions: *const *const i8,
+    glfw_extension_count: u32,
+) {
+    let extensions: Vec<bindings::VkExtensionProperties> = unsafe {
+        let mut count = MaybeUninit::uninit();
+        bindings::vkEnumerateInstanceExtensionProperties(
+            ptr::null(),
+            count.as_mut_ptr(),
+            ptr::null_mut(),
+        );
+        let mut buffer = Vec::with_capacity(count.assume_init() as usize);
+        bindings::vkEnumerateInstanceExtensionProperties(
+            ptr::null(),
+            count.as_mut_ptr(),
+            buffer.as_mut_ptr(),
+        );
+        buffer.set_len(count.assume_init() as usize);
+        buffer
+    };
+    println!("available extensions:");
+    for extension in extensions.iter() {
+        println!(
+            "\t{}",
+            unsafe { CStr::from_ptr(extension.extensionName.as_ptr()) }.to_string_lossy()
+        );
+    }
+    let glfw_extensions =
+        unsafe { &*ptr::slice_from_raw_parts(glfw_extensions, glfw_extension_count as usize) }
+            .into_iter()
+            .map(|&name| unsafe { CStr::from_ptr(name) });
+    for glfw_extension in glfw_extensions {
+        assert!(
+            extensions
+                .iter()
+                .find(|extension| unsafe {
+                    CStr::from_ptr(extension.extensionName.as_ptr()) == glfw_extension
+                })
+                .is_some(),
+            "required extension {} not supported",
+            glfw_extension.to_string_lossy()
+        )
     }
 }
